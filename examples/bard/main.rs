@@ -2,8 +2,8 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader}; // 1. Import ahash
+
 /// A simple shuffle sharding library
 pub struct FastShards {
     customer_assignments: Vec<Vec<String>>,
@@ -22,16 +22,17 @@ impl FastShards {
         for _ in 0..customers.len() {
             customer_assignments.push(Vec::with_capacity(n));
         }
+        let mut shard_counter = 0;
+        for (i, _) in customers.iter().enumerate() {
+            for _ in 0..n {
+                let server_index = shard_counter;
 
-        for (i, customer) in customers.iter().enumerate() {
-            for shar_id in 0..n {
-                let mut hash_state: DefaultHasher = DefaultHasher::new();
-                hash_state.write_usize(shar_id);
-                hash_state.write(customer.as_str().as_bytes());
-
-                let hash_value = hash_state.finish() as usize;
-                let server_index = (hash_value) % shuffled_servers.len();
                 customer_assignments[i].push(shuffled_servers.get(server_index).unwrap().clone());
+                shard_counter += 1;
+                if shard_counter >= shuffled_servers.len() {
+                    shard_counter = 0;
+                    shuffled_servers.shuffle(&mut rng);
+                }
             }
         }
 
@@ -57,7 +58,7 @@ fn main() -> io::Result<()> {
     let servers: Vec<String> = servers_reader.lines().flatten().collect();
     let customers: Vec<String> = customers_reader.lines().flatten().collect();
 
-    let n = 3; // Assign each customer to 3 servers
+    let n = 4; // Assign each customer to 3 servers
     let shards = FastShards::new(servers, &customers, n);
 
     let mut s_stat: HashMap<String, i32> = HashMap::new();
@@ -86,12 +87,12 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn sort_hashmap_by_value(hashmap: &HashMap<String, i32>) -> Vec<(&String, &i32)> {
-    let mut sorted_pairs: Vec<_> = hashmap.iter().collect();
-    sorted_pairs.sort_by(|a, b| a.1.cmp(b.1)); // Sort by value
+// fn sort_hashmap_by_value(hashmap: &HashMap<String, i32>) -> Vec<(&String, &i32)> {
+//     let mut sorted_pairs: Vec<_> = hashmap.iter().collect();
+//     sorted_pairs.sort_by(|a, b| a.1.cmp(b.1)); // Sort by value
 
-    sorted_pairs
-}
+//     sorted_pairs
+// }
 fn has_duplicates<T: Eq + std::hash::Hash>(vec: &[T]) -> bool {
     let mut set = HashSet::new();
     for item in vec {

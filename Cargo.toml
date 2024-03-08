@@ -8,3 +8,6 @@ ahash = "0.8.11"
 dashmap = "5.5.3"
 md5 = "0.7.0"
 rand = { version = "*", features = ["small_rng"] }
+
+[profile.release]
+debug = true
