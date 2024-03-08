@@ -1,0 +1,1 @@
+hyperfine --export-markdown benc.md --runs 5 './target/release/examples/bard' './target/release/examples/gpt' './target/release/examples/main' './target/release/examples/opus'

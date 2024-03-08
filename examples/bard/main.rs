@@ -1,0 +1,103 @@
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::{self, BufRead, BufReader, Read};
+/// A simple shuffle sharding library
+pub struct FastShards {
+    customer_assignments: Vec<Vec<String>>,
+}
+
+impl FastShards {
+    /// Creates a new `FastShards` instance and assigns customers to servers `n` times.
+    pub fn new(servers: Vec<String>, customers: &[String], n: usize) -> Self {
+        let mut rng = thread_rng();
+        let mut customer_assignments = Vec::with_capacity(customers.len());
+
+        // Pre-shuffle servers for faster assignment
+        let mut shuffled_servers = servers.clone();
+        shuffled_servers.shuffle(&mut rng);
+
+        for _ in 0..customers.len() {
+            customer_assignments.push(Vec::with_capacity(n));
+        }
+
+        for (i, customer) in customers.iter().enumerate() {
+            for shar_id in 0..n {
+                let mut hash_state: DefaultHasher = DefaultHasher::new();
+                hash_state.write_usize(shar_id);
+                hash_state.write(customer.as_str().as_bytes());
+
+                let hash_value = hash_state.finish() as usize;
+                let server_index = (hash_value) % shuffled_servers.len();
+                customer_assignments[i].push(shuffled_servers.get(server_index).unwrap().clone());
+            }
+        }
+
+        FastShards {
+            customer_assignments,
+        }
+    }
+
+    /// Returns the servers a given customer is assigned to.
+    pub fn get_servers_for_customer(&self, customer_index: usize) -> Option<&Vec<String>> {
+        self.customer_assignments.get(customer_index)
+    }
+}
+
+fn main() -> io::Result<()> {
+    let servers_file = File::open("fqdns.txt")?;
+    let customers_file = File::open("users.txt")?;
+
+    let servers_reader = BufReader::new(servers_file);
+    let customers_reader = BufReader::new(customers_file);
+
+    // Read servers and customers
+    let servers: Vec<String> = servers_reader.lines().flatten().collect();
+    let customers: Vec<String> = customers_reader.lines().flatten().collect();
+
+    let n = 3; // Assign each customer to 3 servers
+    let shards = FastShards::new(servers, &customers, n);
+
+    let mut s_stat: HashMap<String, i32> = HashMap::new();
+    // Access pre-assigned servers for each customer
+    for (i, customer) in customers.iter().enumerate() {
+        if let Some(assigned_servers) = shards.get_servers_for_customer(i) {
+            for s in assigned_servers {
+                let val = s_stat.entry(s.to_string()).or_insert(0);
+                *val += 1;
+            }
+            if has_duplicates(assigned_servers) {
+                println!("{:?}", assigned_servers);
+                // panic!()
+            }
+            // println!(
+            //     "Customer '{}' is assigned to servers: {:?}",
+            //     customer, assigned_servers
+            // );
+        }
+    }
+    // let sorted_map = sort_hashmap_by_value(&s_stat);
+
+    // for (key, value) in sorted_map {
+    //     println!("{}: {}", key, value);
+    // }
+    Ok(())
+}
+
+fn sort_hashmap_by_value(hashmap: &HashMap<String, i32>) -> Vec<(&String, &i32)> {
+    let mut sorted_pairs: Vec<_> = hashmap.iter().collect();
+    sorted_pairs.sort_by(|a, b| a.1.cmp(b.1)); // Sort by value
+
+    sorted_pairs
+}
+fn has_duplicates<T: Eq + std::hash::Hash>(vec: &[T]) -> bool {
+    let mut set = HashSet::new();
+    for item in vec {
+        if !set.insert(item) {
+            return true; // Found a duplicate
+        }
+    }
+    false // No duplicates found
+}
