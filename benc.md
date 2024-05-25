@@ -1,5 +1,5 @@
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `./target/release/examples/bard` | 80.8 ± 12.1 | 69.9 | 162.6 | 1.29 ± 0.54 |
-| `./target/release/examples/ahash` | 71.2 ± 22.3 | 63.8 | 225.3 | 1.14 ± 0.57 |
-| `./target/release/shuffle_sharding` | 62.5 ± 24.5 | 52.8 | 231.5 | 1.00 |
+| `./target/release/examples/bard` | 178.5 ± 32.2 | 164.0 | 400.1 | 1.53 ± 0.33 |
+| `./target/release/examples/ahash` | 162.9 ± 18.3 | 148.0 | 284.0 | 1.39 ± 0.23 |
+| `./target/release/shuffle_sharding` | 116.8 ± 13.6 | 108.5 | 207.3 | 1.00 |

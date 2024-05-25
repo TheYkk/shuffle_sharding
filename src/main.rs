@@ -1,82 +1,80 @@
-use ahash::{AHashMap, AHashSet};
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use ahash::AHashMap;
 
-/// A simple shuffle sharding library
-pub struct FastShards<'a> {
-    customer_assignments: Vec<Vec<&'a String>>,
-}
+use std::{
+    hash::{Hash, Hasher},
+    io,
+};
 
-impl<'a> FastShards<'a> {
-    /// Creates a new `FastShards` instance and assigns customers to servers `n` times.
-    pub fn new(servers: &'a [String], customers: &'a [String], n: usize) -> Self {
-        let mut rng = thread_rng();
-        let mut customer_assignments = Vec::with_capacity(customers.len());
+// use rand::seq::SliceRandom;
 
-        for _ in 0..customers.len() {
-            customer_assignments.push(Vec::with_capacity(n));
-        }
+use wyhash::WyHash;
 
-        for (i, _) in customers.iter().enumerate() {
-            // for _ in 0..n {
-            customer_assignments[i].extend(
-                servers
-                    .choose_multiple(&mut rng, n)
-                    .collect::<Vec<&String>>(),
-            );
-            // }
-        }
-
-        FastShards {
-            customer_assignments,
-        }
-    }
-
-    /// Returns the servers a given customer is assigned to.
-    pub fn get_servers_for_customer(&self, customer_index: usize) -> Option<&Vec<&String>> {
-        self.customer_assignments.get(customer_index)
-    }
-}
+const NUM_RESOURCES: usize = 2048;
+const CLIENT_SIZE: usize = 100_000_000;
 
 fn main() -> io::Result<()> {
-    let servers_file = File::open("fqdns.txt")?;
-    let customers_file = File::open("users.txt")?;
+    let servers: Vec<String> = (1..=NUM_RESOURCES)
+        .map(|i| format!("server{}.theykk.net", i))
+        .collect();
+    dbg!(servers.len());
+    let customers: Vec<String> = (1..=CLIENT_SIZE)
+        .map(|i| format!("user-or-tenat-{}", i))
+        .collect();
 
-    let servers_reader = BufReader::new(servers_file);
-    let customers_reader = BufReader::new(customers_file);
+    let mut s: WyHash = WyHash::default();
 
-    // Read servers and customers
-    let servers: Vec<String> = servers_reader.lines().flatten().collect();
-    let customers: Vec<String> = customers_reader.lines().flatten().collect();
+    // servers.shuffle(&mut );
 
-    let n = 4; // Assign each customer to 4 servers
-    let shards = FastShards::new(&servers, &customers, n);
+    // let mut selected_indices: AHashMap<String, i32> = AHashMap::new();
 
-    let mut s_stat: AHashMap<String, i32> = AHashMap::new();
+    // let mut s_stat: AHashMap<String, i32> = AHashMap::new();
+    let scount: usize = servers.len();
+
     // Access pre-assigned servers for each customer
-    for (i, customer) in customers.iter().enumerate() {
-        if let Some(assigned_servers) = shards.get_servers_for_customer(i) {
-            for s in assigned_servers {
-                let val = s_stat.entry(s.to_string()).or_insert(0);
-                *val += 1;
-            }
-            if has_duplicates(assigned_servers) {
-                println!("{:?}", assigned_servers);
-            }
+    for (_, customer) in customers.iter().enumerate() {
+        // s.write_str(customer.as_str())
+
+        customer.hash(&mut s);
+        let hascik = s.finish();
+        let part1 = (hascik & 0xFFFF) as usize;
+        let part2 = ((hascik >> 16) & 0xFFFF) as usize;
+        let part3 = ((hascik >> 32) & 0xFFFF) as usize;
+        let part4 = ((hascik >> 48) & 0xFFFF) as usize;
+
+        let sel_server = vec![
+            servers[part4 % scount].clone(),
+            servers[part2 % scount].clone(),
+            servers[part3 % scount].clone(),
+            servers[part1 % scount].clone(),
+        ];
+
+        if part4 % scount == part2 % scount
+            && part2 % scount == part3 % scount
+            && part3 % scount == part1 % scount
+        {
+            println!("BINGOOOO");
+            println!("{}", sel_server.clone().concat());
         }
+        // let val = s_stat.entry(sel_server.concat()).or_insert(0);
+        // *val += 1;
+
+        // for ssx in sel_server {
+        //     let val3 = selected_indices.entry(ssx).or_insert(0);
+        //     *val3 += 1;
+        // }
     }
 
+    // dbg!(selected_indices.clone());
+    // let mut bb = 0;
+    // for sx in selected_indices {
+    //     bb += sx.1
+    // }
+    // dbg!(bb);
+    // // dbg!(s_stat.clone());
+    // for x in s_stat {
+    //     if x.1 > 2 {
+    //         println!("{} => {}", x.1, x.0)
+    //     }
+    // }
     Ok(())
-}
-
-fn has_duplicates<T: Eq + std::hash::Hash>(vec: &[T]) -> bool {
-    let mut set = AHashSet::new();
-    for item in vec {
-        if !set.insert(item) {
-            return true; // Found a duplicate
-        }
-    }
-    false // No duplicates found
 }
