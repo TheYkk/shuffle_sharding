@@ -1,0 +1,47 @@
+load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
+load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
+
+load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain")
+load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
+
+# All the default toolchains, suitable for a quick demo or early prototyping.
+system_cxx_toolchain(
+    name = "cxx",
+    visibility = ["PUBLIC"],
+)
+
+system_genrule_toolchain(
+    name = "genrule",
+    visibility = ["PUBLIC"],
+)
+
+system_python_bootstrap_toolchain(
+  name = "python_bootstrap",
+  visibility = ["PUBLIC"],
+)
+  
+system_rust_toolchain(
+    name = "rust",
+    default_edition = "2021",
+    visibility = ["PUBLIC"],
+)
+
+
+
+# remote_test_execution_toolchain(
+#     name = "remote_test_execution",
+#     visibility = ["PUBLIC"],
+# )
+
+# CommandExecutorConfig(
+#   remote_enabled = True,
+#   local_enabled= False,
+#   use_limited_hybrid = True,
+#   remote_execution_properties = {
+#       "platform": "ios-simulator-pure-re",
+#       "subplatform": "iPhone 8.iOS 15.0",
+#       "xcode-version": "xcodestable",
+#   },
+#   remote_execution_use_case = "tpx-default",
+# )

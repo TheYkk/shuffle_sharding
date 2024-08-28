@@ -1,80 +1,80 @@
-use ahash::AHashMap;
-
+use rand::rngs::StdRng;
 use std::{
+    fs::File,
     hash::{Hash, Hasher},
-    io,
+    io::{self, Write},
+    sync::Arc,
 };
 
 // use rand::seq::SliceRandom;
 
-use wyhash::WyHash;
+use ahash::{AHashMap, AHasher};
+// use ahash::AHashMap;
+use rand::{seq::SliceRandom, RngCore, SeedableRng};
+use wyhash::{WyHash, WyRng};
 
-const NUM_RESOURCES: usize = 2048;
-const CLIENT_SIZE: usize = 100_000_000;
-
+const NUM_RESOURCES: usize = 50;
+const CLIENT_SIZE: usize = 100_000;
+const SHARD_NODE_COUNT: usize = 4;
 fn main() -> io::Result<()> {
-    let servers: Vec<String> = (1..=NUM_RESOURCES)
+    let mut servers: Vec<String> = (1..=NUM_RESOURCES)
         .map(|i| format!("server{}.theykk.net", i))
         .collect();
+
     dbg!(servers.len());
+
     let customers: Vec<String> = (1..=CLIENT_SIZE)
-        .map(|i| format!("user-or-tenat-{}", i))
+        .map(|i| format!("user-{}-or-tenat", i))
         .collect();
 
-    let mut s: WyHash = WyHash::default();
+    // let mut customers: Vec<String> = Vec::with_capacity(CLIENT_SIZE);
+    // customers.extend((1..=CLIENT_SIZE).map(|i| format!("user-{}-or-tenat", i)));
 
-    // servers.shuffle(&mut );
+    let encodedd: Vec<u8> = bitcode::encode(&customers.clone()); // No error
+    File::create("twoenc.bin")
+        .unwrap()
+        .write_all(&encodedd)
+        .unwrap();
+    let mut s: AHasher = AHasher::default();
 
-    // let mut selected_indices: AHashMap<String, i32> = AHashMap::new();
+    let scount: u64 = servers.len().try_into().unwrap();
 
-    // let mut s_stat: AHashMap<String, i32> = AHashMap::new();
-    let scount: usize = servers.len();
+    let mut selected_indices: AHashMap<String, u32> = AHashMap::with_capacity(scount as usize);
 
     // Access pre-assigned servers for each customer
     for (_, customer) in customers.iter().enumerate() {
-        // s.write_str(customer.as_str())
-
         customer.hash(&mut s);
-        let hascik = s.finish();
-        let part1 = (hascik & 0xFFFF) as usize;
-        let part2 = ((hascik >> 16) & 0xFFFF) as usize;
-        let part3 = ((hascik >> 32) & 0xFFFF) as usize;
-        let part4 = ((hascik >> 48) & 0xFFFF) as usize;
+        let hascik: u64 = s.finish();
+        // let mut chash: WyRng = R::seed_from_u64(hascik);
+        let mut rng = StdRng::seed_from_u64(hascik);
+        // let mut cservers = servers.clone();
+        servers.shuffle(&mut rng);
 
-        let sel_server = vec![
-            servers[part4 % scount].clone(),
-            servers[part2 % scount].clone(),
-            servers[part3 % scount].clone(),
-            servers[part1 % scount].clone(),
-        ];
+        let mut sel_server: Vec<String> = Vec::with_capacity(SHARD_NODE_COUNT);
 
-        if part4 % scount == part2 % scount
-            && part2 % scount == part3 % scount
-            && part3 % scount == part1 % scount
-        {
+        &servers
+            .iter()
+            .take(SHARD_NODE_COUNT)
+            .for_each(|s| sel_server.push(s.to_string()));
+
+        // for _ in 0..SHARD_NODE_COUNT {
+        //   sel_server.push(servers)
+
+        let all_equal = sel_server.iter().all(|x| *x == sel_server[0]);
+
+        if all_equal {
             println!("BINGOOOO");
             println!("{}", sel_server.clone().concat());
         }
-        // let val = s_stat.entry(sel_server.concat()).or_insert(0);
-        // *val += 1;
 
-        // for ssx in sel_server {
-        //     let val3 = selected_indices.entry(ssx).or_insert(0);
-        //     *val3 += 1;
-        // }
+        for ssx in sel_server {
+            let val3 = selected_indices.entry(ssx).or_insert(0);
+            *val3 += 1;
+        }
     }
 
-    // dbg!(selected_indices.clone());
-    // let mut bb = 0;
-    // for sx in selected_indices {
-    //     bb += sx.1
-    // }
-    // dbg!(bb);
-    // // dbg!(s_stat.clone());
-    // for x in s_stat {
-    //     if x.1 > 2 {
-    //         println!("{} => {}", x.1, x.0)
-    //     }
-    // }
+    // Convert the AHashMap to a Vec of tuples before encoding
+    let selected_indices_vec: Vec<(String, u32)> = selected_indices.into_iter().collect();
+
     Ok(())
 }
